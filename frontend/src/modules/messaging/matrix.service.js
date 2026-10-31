@@ -4,7 +4,7 @@ import {encryptAttachment,decryptAttachment} from 'matrix-encrypt-attachment';
 
 export async function connectMatrix(session,onChange,onCall) {
  const {matrix}=session;
- const baseUrl=typeof window!=='undefined'?window.location.origin:(matrix.baseUrl||'');
+ const baseUrl=matrix.baseUrl||(typeof window!=='undefined'?(import.meta.env.VITE_BACKEND_URL||import.meta.env.VITE_API_URL||window.location.origin):'');
  matrix.baseUrl=baseUrl;
  const client=sdk.createClient({
   baseUrl,

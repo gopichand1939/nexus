@@ -17,7 +17,7 @@ export function createAuthService({model,matrix,vault,config}) {
     try {
       await model.createSession({hash:hashToken(token),csrfHash:hashToken(csrf),userId:account.id,matrixToken:vault.seal(credentials.access_token),deviceId:credentials.device_id,expiresAt});
     } catch(error) { await matrix.logout(credentials.access_token).catch(()=>{}); throw error; }
-    return {token,csrf,expiresAt,data:{user:publicSelf(account),matrix:{userId:account.id,deviceId:credentials.device_id,accessToken:credentials.access_token,baseUrl:config.matrixPublicUrl}}};
+    return {token,csrf,expiresAt,data:{token,csrf,user:publicSelf(account),matrix:{userId:account.id,deviceId:credentials.device_id,accessToken:credentials.access_token,baseUrl:config.matrixPublicUrl}}};
   }
   return {
     async register(input) {

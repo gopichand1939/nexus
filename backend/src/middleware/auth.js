@@ -2,7 +2,10 @@ import { assert } from '../shared/errors.js';
 import { hashToken, safeEqual } from '../shared/security.js';
 export function authentication(service) {
   return async(req,res,next)=>{
-    req.session = await service.authenticate(req.cookies.nexus_session);
+    const authHeader = req.get('Authorization') || '';
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const token = bearerToken || req.cookies?.nexus_session || req.query?.token;
+    req.session = await service.authenticate(token);
     if (!['GET','HEAD','OPTIONS'].includes(req.method))
       assert(safeEqual(hashToken(req.get('X-CSRF-Token') || ''),req.session.csrf_hash),403,'CSRF','Refresh the page and try again.');
     next();

@@ -22,7 +22,7 @@ export default function App(){
  const notify=useCallback(message=>{setToast(message);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),6500);},[]);
 
  useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('nexus.theme',theme);},[theme]);
- useEffect(()=>{Promise.all([api('/config').then(setConfig),api('/auth/me').then(s=>{if(s?.matrix)s.matrix.baseUrl=window.location.origin;setSession(s);}).catch(e=>{if(e.status!==401)notify(e.message);})]).catch(e=>notify(e.message)).finally(()=>setLoading(false));},[]);
+ useEffect(()=>{Promise.all([api('/config').then(setConfig),api('/auth/me').then(s=>{if(s?.matrix)s.matrix.baseUrl=import.meta.env.VITE_BACKEND_URL||import.meta.env.VITE_API_URL||window.location.origin;setSession(s);}).catch(e=>{if(e.status!==401)notify(e.message);})]).catch(e=>notify(e.message)).finally(()=>setLoading(false));},[]);
 
  useEffect(()=>{
   if(!query.trim()){setSearchResults([]);return;}
@@ -54,7 +54,7 @@ export default function App(){
  useEffect(()=>{if(!client||!room||session?.user.preferences?.readReceipts===false)return;const last=room.getLiveTimeline().getEvents().at(-1);if(last&&room.getMyMembership()==='join')client.sendReadReceipt(last).catch(()=>{});},[selected,revision]);
 
  async function run(fn){try{return await fn();}catch(e){notify(e.message||'Action failed.');}}
- async function logout(){if(!window.confirm('Sign out? Keep this browser’s site data if you need its encryption keys. A new login creates a new device and may not restore old history.'))return;await run(async()=>{await api('/auth/logout',{method:'POST'});call?.hangup('user_hangup',false);setCall(null);client?.stopClient();setClient(null);setSession(null);setSelected(null);setConnectionError('');});}
+ async function logout(){if(!window.confirm('Sign out? Keep this browser’s site data if you need its encryption keys. A new login creates a new device and may not restore old history.'))return;await run(async()=>{await api('/auth/logout',{method:'POST'});if(typeof localStorage!=='undefined'){localStorage.removeItem('nexus_session_token');localStorage.removeItem('nexus_csrf_token');}call?.hangup('user_hangup',false);setCall(null);client?.stopClient();setClient(null);setSession(null);setSelected(null);setConnectionError('');});}
 
  async function startCall(video,targetRoom=room){
   const activeRoom=targetRoom||room;
@@ -120,7 +120,7 @@ export default function App(){
   const visibleContacts=contacts.filter(p=>!query.trim()||p.displayName?.toLowerCase().includes(query.toLowerCase())||p.id?.toLowerCase().includes(query.toLowerCase()));
 
  if(loading)return <div className="loading-screen"><Brand/><Spinner/><p>Opening your space…</p></div>;
- if(!session)return <><AuthView config={config} onLogin={s=>{if(s?.matrix)s.matrix.baseUrl=window.location.origin;setSession(s);}}/>{toast&&<div className="toast" role="alert">{toast}</div>}</>;
+ if(!session)return <><AuthView config={config} onLogin={s=>{if(s?.matrix)s.matrix.baseUrl=import.meta.env.VITE_BACKEND_URL||import.meta.env.VITE_API_URL||window.location.origin;setSession(s);}}/>{toast&&<div className="toast" role="alert">{toast}</div>}</>;
  if(section==='admin')return <><AdminPanel onClose={()=>setSection('chats')} notify={notify}/>{toast&&<div className="toast" role="status">{toast}</div>}</>;
 
  return (
@@ -285,7 +285,7 @@ export default function App(){
 
    {modal&&client&&<Modal title={{new:'A new conversation',settings:'Your preferences',security:'Device verification',report:'Report a concern',info:'Conversation details',forward:'Forward message'}[modal.type]} onClose={()=>setModal(null)}>
     {modal.type==='new'&&<NewConversation client={client} notify={notify} onCreated={id=>{setSelected(id);setSection('chats');setModal(null);}}/>}
-    {modal.type==='settings'&&<SettingsPanel client={client} user={session.user} onUpdated={user=>setSession({...session,user})} onDeleted={()=>{call?.hangup('user_hangup',false);setCall(null);client.stopClient();setClient(null);setSession(null);setModal(null);setSelected(null);}} notify={notify}/>}
+    {modal.type==='settings'&&<SettingsPanel client={client} user={session.user} onUpdated={user=>setSession({...session,user})} onDeleted={()=>{if(typeof localStorage!=='undefined'){localStorage.removeItem('nexus_session_token');localStorage.removeItem('nexus_csrf_token');}call?.hangup('user_hangup',false);setCall(null);client.stopClient();setClient(null);setSession(null);setModal(null);setSelected(null);}} notify={notify}/>}
     {modal.type==='security'&&<SecurityPanel client={client} room={room} notify={notify}/>}
     {modal.type==='report'&&<ReportForm userId={modal.userId} initialEvidence={modal.evidence} onDone={()=>setModal(null)} notify={notify}/>}
     {modal.type==='info'&&<ConversationInfo client={client} room={room} notify={notify} onClose={()=>{setModal(null);setSelected(null);}}/>}
