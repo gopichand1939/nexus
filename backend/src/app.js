@@ -71,7 +71,7 @@ export function createApp({config,pool,matrix}) {
   let status=error.status||500,code=error.code||'INTERNAL_ERROR',message=error.message;
   if(error.code==='23503'){status=404;code='NOT_FOUND';message='Account not found.';}
   if(error.code==='23505'){status=409;code='CONFLICT';message='This record already exists.';}
-  if(status>=500){console.error(JSON.stringify({requestId:req.requestId,code:'INTERNAL_ERROR'}));message='Service unavailable. Please try again.';code='INTERNAL_ERROR';}
+  if(status>=500){console.error('API Error:', req.requestId, error);message=error.message||'Service unavailable. Please try again.';code=error.code||'INTERNAL_ERROR';}
   res.status(status).json({error:{code,message,requestId:req.requestId}});
  });
  return app;

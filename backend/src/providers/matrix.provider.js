@@ -6,7 +6,7 @@ export function createMatrixProvider(config, fetchImpl = fetch) {
   async function request(method, path, body, token) {
     let response;
     try {
-      if (synapseReachable === false || config.matrixUrl.includes('synapse')) {
+      if (synapseReachable === false || config.matrixUrl.includes('synapse') || config.matrixUrl.includes('localhost')) {
         throw new Error('Synapse offline');
       }
       response = await fetchImpl(`${config.matrixUrl}${path}`, {
