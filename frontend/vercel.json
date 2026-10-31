@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://nexus-4zj1.onrender.com/api/:match*"
+    },
+    {
+      "source": "/_matrix/:match*",
+      "destination": "https://nexus-4zj1.onrender.com/_matrix/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
