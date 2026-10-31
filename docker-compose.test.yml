@@ -1,0 +1,12 @@
+# Keep disposable account tests on the local PostgreSQL service, even when
+# the private .env points DATABASE_URL at an existing remote database.
+# docker compose -p nexus-local-test -f docker-compose.yml -f docker-compose.test.yml up -d --build frontend
+x-test-database: &test-database
+  DATABASE_URL: postgresql://nexus_app:${NEXUS_DB_PASSWORD:?Run setup first}@postgres:5432/nexus_app
+  REALTIME_DATABASE_URL: postgresql://nexus_app:${NEXUS_DB_PASSWORD:?Run setup first}@postgres:5432/nexus_app
+
+services:
+  migrate:
+    environment: *test-database
+  backend:
+    environment: *test-database

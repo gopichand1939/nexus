@@ -1,0 +1,11 @@
+services:
+  backend:
+    environment:
+      APP_ORIGIN: http://localhost:5173
+      NODE_ENV: development
+      TRUST_PROXY: 0
+    ports: [127.0.0.1:3000:3000]
+    volumes: [./backend:/app/backend:ro]
+    command: [node, --watch, backend/src/server.js]
+  synapse:
+    ports: [127.0.0.1:8008:8008]

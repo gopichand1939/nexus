@@ -1,0 +1,24 @@
+{
+  "name": "nexus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "start": "node scripts/start-all.mjs",
+    "dev": "node scripts/start-all.mjs",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "test": "npm run test -w backend",
+    "test:browser": "playwright test",
+    "check": "node scripts/check-source.mjs",
+    "migrate": "npm run migrate -w backend"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}

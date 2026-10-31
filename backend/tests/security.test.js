@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createTokenVault,newToken,hashToken,safeEqual} from '../src/shared/security.js';
+import {hotp,verifyTotp} from '../src/shared/totp.js';
+import {username,matrixId} from '../src/shared/validation.js';
+import {sameOrigin,authentication,requireAdmin,requireMfa} from '../src/middleware/auth.js';
+const key='ab'.repeat(32);
+test('encrypted stored tokens round trip with randomized ciphertext',()=>{const v=createTokenVault(key),a=v.seal('secret-token'),b=v.seal('secret-token');assert.notEqual(a,b);assert.equal(v.open(a),'secret-token');assert.ok(!a.includes('secret-token'));});
+test('modified stored credentials fail authentication',()=>{const v=createTokenVault(key),bytes=Buffer.from(v.seal('secret'),'base64');bytes[bytes.length-1]^=1;assert.throws(()=>v.open(bytes.toString('base64')));});
+test('different encryption keys cannot open tokens',()=>assert.throws(()=>createTokenVault('cd'.repeat(32)).open(createTokenVault(key).seal('token'))));
+test('session secrets are random and only hashes are compared',()=>{const a=newToken(),b=newToken();assert.notEqual(a,b);assert.equal(hashToken(a).length,64);assert.equal(safeEqual(a,b),false);assert.equal(safeEqual(undefined,b),false);assert.equal(safeEqual(a,a),true);});
+test('HOTP implementation matches RFC 4226 vectors',()=>{const secret='GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';const expected=['755224','287082','359152','969429','338314','254676','287922','162583','399871','520489'];expected.forEach((value,i)=>assert.equal(hotp(secret,i),value));});
+test('MFA rejects replay and expired time steps',()=>{const secret='GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',now=3000000,code=hotp(secret,100);assert.equal(verifyTotp(secret,code,now),100);assert.equal(verifyTotp(secret,code,now,100),null);assert.equal(verifyTotp(secret,hotp(secret,90),now),null);assert.equal(verifyTotp(secret,'bad',now),null);});
+test('invalid and foreign identities are rejected',()=>{assert.equal(username('Alice_1'),'alice_1');for(const value of ['../admin',"';DROP TABLE users;--",'ab','a b'])assert.throws(()=>username(value));assert.throws(()=>matrixId('@alice:evil.test','nexus.test'));assert.equal(matrixId('@alice:nexus.test','nexus.test'),'@alice:nexus.test');});
+test('unsafe requests require the exact origin',()=>{const middleware=sameOrigin('https://nexus.test');let called=false;middleware({method:'POST',get:()=> 'https://nexus.test'},{},()=>called=true);assert.ok(called);assert.throws(()=>middleware({method:'POST',get:()=> 'https://evil.test'},{},()=>{}));assert.throws(()=>middleware({method:'POST',get:()=>undefined},{},()=>{}));});
+test('session mutation rejects missing or wrong CSRF token',async()=>{const middleware=authentication({authenticate:async()=>({csrf_hash:hashToken('correct')})});for(const token of ['', 'incorrect'])await assert.rejects(()=>middleware({method:'PATCH',cookies:{nexus_session:'valid'},get:()=>token},{},()=>{}),{code:'CSRF'});let passed=false;await middleware({method:'PATCH',cookies:{nexus_session:'valid'},get:()=> 'correct'},{},()=>passed=true);assert.ok(passed);});
+test('admin role and recent MFA are separate gates',()=>{assert.throws(()=>requireAdmin({session:{role:'USER'}},{},()=>{}),{code:'FORBIDDEN'});assert.throws(()=>requireMfa({session:{role:'ADMIN',mfa_until:new Date(0)}},{},()=>{}),{code:'MFA_REQUIRED'});let passed=false;requireMfa({session:{mfa_until:new Date(Date.now()+1000)}},{},()=>passed=true);assert.ok(passed);});

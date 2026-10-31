@@ -1,0 +1,77 @@
+name: nexus
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Run setup first}
+      NEXUS_DB_PASSWORD: ${NEXUS_DB_PASSWORD:?Run setup first}
+      MATRIX_DB_PASSWORD: ${MATRIX_DB_PASSWORD:?Run setup first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/01-nexus.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  config:
+    image: python:3.12-alpine
+    env_file: .env
+    volumes:
+      - ./scripts/render-services.py:/render.py:ro
+      - synapse-data:/data
+      - turn-config:/turn
+    command: [python, /render.py]
+  synapse:
+    image: ghcr.io/element-hq/synapse:v1.163.0
+    depends_on:
+      postgres: {condition: service_healthy}
+      config: {condition: service_completed_successfully}
+    volumes:
+      - synapse-data:/data
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8008/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+  migrate:
+    build: {context: ., target: api}
+    env_file: .env
+    command: [node, backend/src/database/migrate.js]
+    depends_on:
+      postgres: {condition: service_healthy}
+  backend:
+    build: {context: ., target: api}
+    env_file: .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      synapse: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  frontend:
+    build: {context: ., target: web}
+    ports: [127.0.0.1:8080:80]
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+  turn:
+    image: coturn/coturn:4.6.3
+    network_mode: host
+    command: [-c, /config/turnserver.conf]
+    volumes: [turn-config:/config:ro]
+    depends_on:
+      config: {condition: service_completed_successfully}
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  synapse-data:
+  turn-config:

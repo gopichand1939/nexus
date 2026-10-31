@@ -1,0 +1,19 @@
+import {useEffect,useRef} from 'react';
+import {Download,Reply,Pencil,Trash2,Flag,Forward,Check,CheckCheck,RotateCcw} from 'lucide-react';
+import {Avatar,IconButton} from '../../shared/components';
+import {visibleMessages,downloadFile,reactionCounts,toggleReaction} from './matrix.service';
+export function MessageList({client,room,query,revision,onReply,onEdit,onReport,onForward,notify}) {
+ const end=useRef(null);const list=visibleMessages(room).filter(m=>!query||(m.content.body||'').toLowerCase().includes(query.toLowerCase()));
+ useEffect(()=>{if(!query)end.current?.scrollIntoView({behavior:'smooth'});},[room?.roomId,list.length]);
+ async function remove(event){if(!window.confirm('Remove this message? Recipients may already have saved a copy.'))return;try{await client.redactEvent(room.roomId,event.getId());}catch(e){notify(e.message);}}
+ async function download(content){try{await downloadFile(client,content);}catch(e){notify(e.message);}}
+ return <div className="messages"><button className="text-button older" onClick={()=>client.scrollback(room,40).catch(e=>notify(e.message))}>Load older messages</button><div className="day-divider"><span>Encrypted conversation</span></div>{!list.length&&<p className="timeline-empty">{query?'No matching messages loaded.':'Your conversation starts here. Verify device fingerprints to start chatting.'}</p>}{list.map(({event,content,edited})=>{
+ const own=event.getSender()===client.getUserId(),failed=event.status==='not_sent';
+ const decryptFailed=event.isDecryptionFailure()||event.getType()==='m.room.encrypted';
+ const sender=room.getMember(event.getSender())?.name||event.getSender();
+ const reply=content['m.relates_to']?.['m.in_reply_to']?.event_id;
+ const reactions=reactionCounts(room,event.getId());
+ const read=room.getUsersReadUpTo(event).some(id=>id!==client.getUserId());
+ return <article className={`message-row ${own?'outgoing':''}`} key={event.getId()}>{!own&&<Avatar name={sender}/>}<div className="message-stack">{!own&&<small className="sender-name">{sender}</small>}<div className={`bubble ${failed?'failed':''}`}>{reply&&<div className="reply-label">Reply to an earlier message</div>}{decryptFailed?<p className="muted">Unable to decrypt on this device.</p>:content.file?<button className="attachment" onClick={()=>download(content)}><Download size={22}/><span>{content.body}<small>{Math.round((content.info?.size||0)/1024)} KB · Encrypted file</small></span></button>:<p>{content.body||'[Unsupported message]'}</p>}<div className="message-meta">{edited&&<span>edited</span>}<time>{new Date(event.getTs()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time>{own&&(failed?<span>Failed</span>:event.status?<span>Sending…</span>:read?<CheckCheck size={14}/>:<Check size={14}/>)}</div></div><div className="reactions">{Object.entries(reactions).map(([emoji,count])=><button key={emoji} onClick={()=>toggleReaction(client,room,event,emoji).catch(e=>notify(e.message))}>{emoji} {count}</button>)}</div><div className="message-actions">{failed?<button className="text-button" onClick={()=>client.resendEvent(event,room).catch(e=>notify(e.message))}><RotateCcw size={14}/> Retry</button>:<><IconButton label="React with thumbs up" onClick={()=>toggleReaction(client,room,event,'👍').catch(e=>notify(e.message))}>👍</IconButton><IconButton label="Reply" onClick={()=>onReply(event)}><Reply size={14}/></IconButton>{!decryptFailed&&!content.file&&<IconButton label="Forward" onClick={()=>onForward(content.body)}><Forward size={14}/></IconButton>}{own&&!content.file&&!decryptFailed&&<IconButton label="Edit" onClick={()=>onEdit(event,content.body)}><Pencil size={14}/></IconButton>}{own?<IconButton label="Delete" onClick={()=>remove(event)}><Trash2 size={14}/></IconButton>:<IconButton label="Report selected message" onClick={()=>onReport(event.getSender(),content.body||'')}><Flag size={14}/></IconButton>}</>}</div></div></article>;
+ })}<div ref={end}/></div>;
+}
