@@ -19,6 +19,15 @@ const wasmPlugin = () => ({
   }
 });
 
+// ==============================================================================
+// BACKEND TARGET (Switch between Local and Production Render)
+// ==============================================================================
+// Option 1: LOCAL BACKEND (Default)
+const BACKEND_TARGET = process.env.VITE_BACKEND_URL || 'http://127.0.0.1:3000';
+
+// Option 2: PRODUCTION RENDER (Uncomment below to connect frontend to Render)
+// const BACKEND_TARGET = 'https://nexus-4zj1.onrender.com';
+
 export default defineConfig({
   plugins: [react(), wasmPlugin()],
   server: {
@@ -27,8 +36,16 @@ export default defineConfig({
     cors: true,
     fs: { allow: ['..'] },
     proxy: {
-      '/api': 'http://127.0.0.1:3000',
-      '/_matrix': 'http://127.0.0.1:3000'
+      '/api': {
+        target: BACKEND_TARGET,
+        changeOrigin: true,
+        secure: false
+      },
+      '/_matrix': {
+        target: BACKEND_TARGET,
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   build: {
