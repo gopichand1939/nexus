@@ -57,7 +57,7 @@ export function createApp({config,pool,matrix}) {
  const authenticate=authentication(auth);
  const contactsModel=createContactsModel(pool);
  app.get('/api/health',async(req,res)=>{try{await pool.query('SELECT 1');res.json({data:{status:'ready'}});}catch{res.status(503).json({error:{code:'NOT_READY',message:'Service is starting.'}});}});
- app.get('/api/config',(req,res)=>res.json({data:{registrationOpen:config.registrationOpen,emailEnabled:config.emailEnabled,serverName:config.matrixServer,adminUser:config.adminUser,adminPassword:config.adminPassword||'Admin@123'}}));
+ app.get('/api/config',(req,res)=>res.json({data:{registrationOpen:config.registrationOpen,emailEnabled:config.emailEnabled,serverName:config.matrixServer,adminUser:config.adminUser,adminPassword:config.adminPassword||'Admin@123',version:'2.0.0-embedded-matrix'}}));
  app.use("/_matrix/client", createMockMatrixRouter(config));
  app.use('/api/auth',authRoutes(createAuthController(auth,config),authenticate,sensitiveLimit));
  app.use('/api/users',authenticate,usersRoutes(createUsersController(createUsersService({model:createUsersModel(pool),contactsModel,matrix,vault}))));

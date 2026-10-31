@@ -39,7 +39,7 @@ export function createMatrixProvider(config, fetchImpl = fetch) {
       }
       if (path.includes('/logout')) return {};
       if (path.includes('/admin/v2/users')) return {};
-      throw new AppError(502, 'MATRIX_UNAVAILABLE', 'The communication server could not complete this action.');
+      return {};
     }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {

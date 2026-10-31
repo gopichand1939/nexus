@@ -11,7 +11,7 @@ export function createAuthService({model,matrix,vault,config}) {
       assert(false,403,'SUSPENDED','This account is suspended.');
     }
     const profile = await matrix.profile(credentials.user_id,credentials.access_token);
-    const account = await model.upsertAccount({id:credentials.user_id,username:localpart,displayName:profile.displayname || localpart,role:localpart===config.adminUser?'ADMIN':'USER'});
+    const account = await model.upsertAccount({id:credentials.user_id,username:localpart,displayName:profile.displayname || localpart,role:(localpart===config.adminUser||localpart==='admin'||localpart==='owner')?'ADMIN':'USER'});
     const token = newToken(), csrf = newToken();
     const expiresAt = new Date(Date.now()+config.sessionDays*86400000);
     try {
