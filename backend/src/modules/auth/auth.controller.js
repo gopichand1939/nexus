@@ -1,8 +1,9 @@
 export function createAuthController(service, config) {
-  const cookieOptions = {httpOnly:true,secure:config.production,sameSite:'strict',path:'/api'};
+  const sameSite = config.production ? 'none' : 'lax';
+  const cookieOptions = {httpOnly:true,secure:config.production,sameSite,path:'/api'};
   const finish = (res,result,status=200) => {
     res.cookie('nexus_session',result.token,{...cookieOptions,expires:result.expiresAt});
-    res.cookie('nexus_csrf',result.csrf,{secure:config.production,sameSite:'strict',path:'/',expires:result.expiresAt});
+    res.cookie('nexus_csrf',result.csrf,{secure:config.production,sameSite,path:'/',expires:result.expiresAt});
     res.status(status).json({data:result.data});
   };
   return {

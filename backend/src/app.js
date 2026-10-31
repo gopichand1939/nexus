@@ -32,7 +32,22 @@ import {callsRoutes} from './modules/calls/calls.routes.js';
 import {createMockMatrixRouter} from './providers/matrix.mock.js';
 export function createApp({config,pool,matrix}) {
  const app=express();app.disable('x-powered-by');app.set('trust proxy',config.trustProxy);
- app.use(helmet());app.use(express.json({limit:'32kb'}));app.use(cookieParser());
+ app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'},crossOriginOpenerPolicy:{policy:'unsafe-none'}}));
+ app.use((req,res,next)=>{
+  const origin=req.get('Origin');
+  if(origin){
+   res.setHeader('Access-Control-Allow-Origin',origin);
+   res.setHeader('Access-Control-Allow-Credentials','true');
+  }else{
+   res.setHeader('Access-Control-Allow-Origin','*');
+  }
+  res.setHeader('Access-Control-Allow-Methods','GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, X-Request-Id, *');
+  res.setHeader('Access-Control-Expose-Headers','X-CSRF-Token, X-Request-Id');
+  if(req.method==='OPTIONS')return res.sendStatus(204);
+  next();
+ });
+ app.use(express.json({limit:'32kb'}));app.use(cookieParser());
  app.use((req,res,next)=>{req.requestId=randomUUID();res.set('Cache-Control','no-store');res.set('X-Request-Id',req.requestId);next();});
  app.use('/api',sameOrigin(config.origin));
  app.use('/api',rateLimit({windowMs:60000,limit:120,standardHeaders:'draft-8',legacyHeaders:false}));

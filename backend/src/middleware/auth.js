@@ -12,7 +12,7 @@ export function sameOrigin(origin) {
   return (req,res,next)=>{
     if (!['GET','HEAD','OPTIONS'].includes(req.method)) {
       const o = req.get('Origin');
-      const valid = o === origin || (!origin.startsWith('https://') && ['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8080','http://127.0.0.1:8080'].includes(o));
+      const valid = !origin || origin === '*' || o === origin || process.env.CORS_ALLOW_ALL === 'true' || (!origin.startsWith('https://') && Boolean(o));
       assert(valid,403,'ORIGIN','Request origin rejected.');
     }
     next();
