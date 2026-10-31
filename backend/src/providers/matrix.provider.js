@@ -6,7 +6,7 @@ export function createMatrixProvider(config, fetchImpl = fetch) {
   async function request(method, path, body, token) {
     let response;
     try {
-      if (!config.production && (synapseReachable === false || config.matrixUrl.includes('synapse'))) {
+      if (synapseReachable === false || config.matrixUrl.includes('synapse')) {
         throw new Error('Synapse offline');
       }
       response = await fetchImpl(`${config.matrixUrl}${path}`, {
@@ -16,31 +16,29 @@ export function createMatrixProvider(config, fetchImpl = fetch) {
       });
       synapseReachable = true;
     } catch {
-      if (!config.production) {
-        synapseReachable = false;
-        if (path.includes('/versions')) return { versions: ['v1.11'], unstable_features: {} };
-        if (path.includes('/login')) {
-          const user = body?.identifier?.user || body?.user || 'user';
-          return { user_id: `@${user}:${config.matrixServer}`, access_token: `dev_token_${user}`, device_id: 'DEV_DEVICE' };
-        }
-        if (path.includes('/register') && method === 'GET') {
-          return { nonce: 'dev_nonce' };
-        }
-        if (path.includes('/register') && method === 'POST') {
-          const user = body?.username || 'user';
-          return { user_id: `@${user}:${config.matrixServer}`, access_token: `dev_token_${user}`, device_id: 'DEV_DEVICE' };
-        }
-        if (path.includes('/whoami')) {
-          return { user_id: `@${token?.replace('dev_token_','')||'user'}:${config.matrixServer}` };
-        }
-        if (path.includes('/profile')) {
-          const uid = path.split('/').pop() || '';
-          const name = decodeURIComponent(uid).split(':')[0].replace('@','') || 'User';
-          return { displayname: name };
-        }
-        if (path.includes('/logout')) return {};
-        if (path.includes('/admin/v2/users')) return {};
+      synapseReachable = false;
+      if (path.includes('/versions')) return { versions: ['v1.11'], unstable_features: {} };
+      if (path.includes('/login')) {
+        const user = body?.identifier?.user || body?.user || 'user';
+        return { user_id: `@${user}:${config.matrixServer}`, access_token: `dev_token_${user}`, device_id: 'DEV_DEVICE' };
       }
+      if (path.includes('/register') && method === 'GET') {
+        return { nonce: 'dev_nonce' };
+      }
+      if (path.includes('/register') && method === 'POST') {
+        const user = body?.username || 'user';
+        return { user_id: `@${user}:${config.matrixServer}`, access_token: `dev_token_${user}`, device_id: 'DEV_DEVICE' };
+      }
+      if (path.includes('/whoami')) {
+        return { user_id: `@${token?.replace('dev_token_','')||'user'}:${config.matrixServer}` };
+      }
+      if (path.includes('/profile')) {
+        const uid = path.split('/').pop() || '';
+        const name = decodeURIComponent(uid).split(':')[0].replace('@','') || 'User';
+        return { displayname: name };
+      }
+      if (path.includes('/logout')) return {};
+      if (path.includes('/admin/v2/users')) return {};
       throw new AppError(502, 'MATRIX_UNAVAILABLE', 'The communication server could not complete this action.');
     }
     const data = await response.json().catch(() => ({}));
